@@ -1,0 +1,1 @@
+text_without_accessibility = "//text()[not(ancestor::span[contains(@class, 'accesshide')])]"
