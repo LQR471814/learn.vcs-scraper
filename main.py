@@ -1,10 +1,11 @@
+from datetime import datetime
 import http.client as http_client
 import logging
 
 import requests
 from lxml import etree
 
-from xpath_utils import text_without_accessibility
+from utils import normalize_redirect_url, text_without_accessibility, htag_selector, htags
 
 def enable_debug_http():
     #? HTTP Debugging
@@ -18,7 +19,8 @@ def enable_debug_http():
 
 
 def get_session(username: str, password: str) -> requests.Session:
-    login_page_req = requests.get(
+    session = requests.Session()
+    login_page_req = session.get(
         'https://learn.vcs.net/login/index.php',
         headers={
             'Host': 'learn.vcs.net',
@@ -29,7 +31,6 @@ def get_session(username: str, password: str) -> requests.Session:
             'DNT': '1',
             'Connection': 'keep-alive',
             'Referer': 'https://learn.vcs.net/',
-            'Cookie': 'MoodleSessionprod=1986a9d6be71745a5ef179b928f1699f; intelliboardPage=site; intelliboardParam=1; intelliboardTime=3',
             'Upgrade-Insecure-Requests': '1',
             'Sec-Fetch-Dest': 'document',
             'Sec-Fetch-Mode': 'navigate',
@@ -37,13 +38,11 @@ def get_session(username: str, password: str) -> requests.Session:
             'Sec-Fetch-User': '?1',
         }
     )
+
     tree = etree.HTML(login_page_req.text)
     logintoken = tree.xpath("//input[@name='logintoken']")[0].get('value')
 
-    logging.info(f'logintoken {logintoken}')
-    logging.info(f'cookies {login_page_req.cookies.get_dict()}')
-
-    login_post = requests.post(
+    login_post = session.post(
         'https://learn.vcs.net/login/index.php',
         headers={
             'Host': 'learn.vcs.net',
@@ -69,16 +68,10 @@ def get_session(username: str, password: str) -> requests.Session:
             'username': username.lower(),
             'password': password,
         },
-        cookies=login_page_req.cookies.copy(),
         allow_redirects=False,
     )
 
     logging.info(f'Session {login_post.cookies.get("MoodleSessionprod")}')
-    # assert login_post.cookies.get('MOODLEID1_prod')
-
-    session = requests.Session()
-    session.cookies = login_post.cookies.copy()
-    # session.cookies.set('MoodleSessionprod', 'aee0646be17e092bd1b5d1b93db63a43')
 
     return session
 
@@ -98,11 +91,66 @@ def get_lesson_plans(session: requests.Session, class_id: int):
         quarter_tree = etree.HTML(r.text)
 
     def pick_quarter(tree: etree.ElementTree) -> str:
+        number = 0
         for name in tree.xpath(f"//li[contains(@class, 'modtype_book')]{text_without_accessibility}"):
-            print(name)
+            split_name = name.split(' ')
+            if int(split_name[1]) > number:
+                number = int(split_name[1])
+            print(split_name)
 
-    pick_quarter(quarter_tree)
+        return tree.xpath(
+            f"//a[@class='aalink'][//*[contains(text(), 'Quarter {number}')]]"
+        )[0].get('href')
 
+    quarter_link = pick_quarter(quarter_tree)
+    logging.info(quarter_link)
+    r = session.get(quarter_link)
+    dates_tree = etree.HTML(r.text)
+
+    def pick_date(tree: etree.ElementTree) -> str:
+        month_map: dict[int, str] = {
+            1: 'January',
+            2: 'February',
+            3: 'March',
+            4: 'April',
+            5: 'May',
+            6: 'June',
+            7: 'July',
+            8: 'August',
+            9: 'September',
+            10: 'October',
+            11: 'November',
+            12: 'December'
+        }
+
+        day_link = tree.xpath(
+            "//li/*[contains(text(), '"
+            f"{month_map[datetime.now().month]} {datetime.now().day}"
+            "')]"
+        )[0]
+
+        return normalize_redirect_url(r.url, day_link.get('href'))
+
+    assignment_url = pick_date(dates_tree)
+    logging.info(assignment_url)
+    r = session.get(assignment_url)
+    assignment_tree = etree.HTML(r.text)
+
+    def pick_homework(tree: etree.ElementTree) -> list[etree.Element]:
+        collecting = False
+        collection = []
+
+        for e in tree.xpath("//div[@class='no-overflow']/*"):
+            if e.tag in htags:
+                collecting = 'homework' in ''.join(e.xpath('//text()')).lower()
+                continue
+            if collecting:
+                collection.append(e)
+
+        return collection
+
+    for e in pick_homework(assignment_tree):
+        print(etree.tostring(e))
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
@@ -121,4 +169,4 @@ if __name__ == '__main__':
     print("Using", username, password)
 
     session = get_session(username, password)
-    get_lesson_plans(session, 1154)
+    get_lesson_plans(session, 433)
