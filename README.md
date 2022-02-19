@@ -10,6 +10,7 @@ from learnvcs import Client, NoEntreeError
 if __name__ == '__main__':
     courses = [433, 1446, 1154, 56, 1468]
     client = Client.login('example.username', 'ABadPassword45')
+    print(client.courses())
 
     for c in courses:
         try:

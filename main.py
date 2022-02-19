@@ -7,6 +7,7 @@ if __name__ == '__main__':
     with open('credentials', 'r') as f:
         username, password, *_ = f.read().split('\n')
         client = Client.login(username, password)
+        logging.debug(client.courses())
         for c in courses:
             try:
                 print(client.homework(c))
