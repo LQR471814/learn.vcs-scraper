@@ -58,7 +58,6 @@ class Client:
             url = navigator.evaluate()
             prevtree = navigator.tree
 
-        logging.info(url)
         r = self.session.get(url)
         assignment_tree = prune_tree(etree.HTML(r.text))
         return assignment_tree
