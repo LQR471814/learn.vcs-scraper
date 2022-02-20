@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='learnvcs',
-    version='0.1.3',
+    version='0.1.4',
     license='GPL-3.0',
     author='LQR471814',
     author_email='bramblefern1013@gmail.com',
