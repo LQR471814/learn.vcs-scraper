@@ -1,5 +1,5 @@
 import logging
-from __init__ import Client, NoEntreeError
+from src import Client, NoEntreeError
 
 if __name__ == '__main__':
     courses = [433, 1446, 1154, 56, 1468]
