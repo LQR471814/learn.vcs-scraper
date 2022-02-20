@@ -9,13 +9,16 @@ text_without_accessibility = "//text()[not(ancestor::span[contains(@class, 'acce
 htag_selector = '*[self::h1 or self::h2 or self::h3 or self::h4 or self::h5 or self::h6]'
 htags = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']
 
+
 def join_paths(p1: str, p2: str) -> str:
     sp1, sp2 = p1.split('/'), p2.split('/')
     try:
-        sp1.remove(''); sp2.remove('')
+        sp1.remove('')
+        sp2.remove('')
     except ValueError:
         pass
     return '/'.join(sp1 + sp2)
+
 
 def normalize_redirect_url(request_url: str, fragment: str) -> str:
     base = urlparse(request_url)
@@ -28,6 +31,7 @@ def normalize_redirect_url(request_url: str, fragment: str) -> str:
             query=url.query
         )
     )
+
 
 def prune_tree(element: etree._Element) -> etree._Element | None:
     if len(list(element)) == 0:
@@ -47,6 +51,7 @@ def prune_tree(element: etree._Element) -> etree._Element | None:
                 if len(child.strip()) == 0:
                     element.remove(child)
     return element
+
 
 def enable_debug_http():
     # ? HTTP Debugging

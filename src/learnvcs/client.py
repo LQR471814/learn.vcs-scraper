@@ -5,9 +5,9 @@ from urllib.parse import parse_qs, urlparse
 
 import requests
 from lxml import etree
-from navigators import *
 
-from utils import htags, prune_tree, root
+from learnvcs.navigators import *
+from learnvcs.utils import htags, prune_tree, root
 
 
 class UnexpectedHomeworkFormat(Exception):

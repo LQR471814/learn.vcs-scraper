@@ -3,7 +3,7 @@ from datetime import datetime
 import requests
 from lxml import etree
 
-from utils import normalize_redirect_url, text_without_accessibility
+from learnvcs.utils import normalize_redirect_url, text_without_accessibility
 
 
 class NoEntreeError(Exception):
