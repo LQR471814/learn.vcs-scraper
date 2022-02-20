@@ -11,17 +11,27 @@ class NoEntreeError(Exception):
         super().__init__("No entree for today.")
 
 
+class NavigationConfig:
+    date: datetime
+
+    def __init__(self, date: datetime = None) -> None:
+        self.date = date
+
+
 class Navigator:
     url: str
     tree: etree._ElementTree
+    config: NavigationConfig
 
     def __init__(
         self, url: str,
         session: requests.Session,
-        tree: etree._ElementTree = None
+        config: NavigationConfig | None,
+        tree: etree._ElementTree = None,
     ) -> None:
         self.url = url
         self.tree = etree.HTML(session.get(url).text)
+        self.config = config if config is not None else NavigationConfig()
 
     def evaluate(self):  # ? This should return another navigator
         raise Exception("cannot run unimplemented function!")
@@ -36,6 +46,7 @@ class QuarterNavigator(Navigator):
     def __init__(
         self, url: str | None,
         session: requests.Session,
+        config: NavigationConfig | None,
         tree: etree._ElementTree = None
     ) -> None:
         if url is None:
@@ -61,10 +72,14 @@ class DateNavigator(Navigator):
     }
 
     def evaluate(self) -> str:
+        date = self.config.date
+        if date is None:
+            date = datetime.now()
+
         day_elements = self.tree.xpath(
             f"//li/a["
-            f"contains(text(), '{self.month_map[datetime.now().month]}') and "
-            f"contains(text(), '{datetime.now().day}')]"
+            f"contains(text(), '{self.month_map[date.month]}') and "
+            f"contains(text(), '{date.day}')]"
         )
 
         if len(day_elements) < 1:

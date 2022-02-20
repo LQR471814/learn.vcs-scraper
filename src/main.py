@@ -1,10 +1,3 @@
-## Learn@VCS Scraper
-
-***A scraper for the learn@vcs website. The original website is dogwater and doesn't provide a comprehensive or consistent way of viewing assignments so here's a scraping application that attempts to do it for you.***
-
-### Example Usage
-
-```python
 from datetime import datetime, timedelta
 from learnvcs import Client, NavigationConfig, NoEntreeError
 
@@ -21,7 +14,6 @@ if __name__ == '__main__':
                 print(client.homework(c))
             except NoEntreeError as e:
                 print(e)
-
             try:
                 print(client.homework(
                     c, NavigationConfig(
@@ -30,4 +22,3 @@ if __name__ == '__main__':
                 ))
             except NoEntreeError as e:
                 print(e)
-```

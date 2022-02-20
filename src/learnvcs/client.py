@@ -9,6 +9,8 @@ from lxml import etree
 from learnvcs.navigators import *
 from learnvcs.utils import htags, prune_tree, root
 
+from learnvcs.navigators import NavigationConfig
+
 
 class UnexpectedHomeworkFormat(Exception):
     def __init__(self, dump: str) -> None:
@@ -48,11 +50,11 @@ class Client:
         logging.info(f'Session {login_post.cookies.get("MoodleSessionprod")}')
         return cls(session)
 
-    def lesson_plans(self, course_id: int) -> etree._ElementTree:
+    def lesson_plans(self, course_id: int, config: NavigationConfig = None) -> etree._ElementTree:
         url = f'https://learn.vcs.net/course/view.php?id={course_id}'
         prevtree = None
         for Nav in self.navigation:
-            navigator = Nav(url, self.session, prevtree)
+            navigator = Nav(url, self.session, config, prevtree)
             url = navigator.evaluate()
             prevtree = navigator.tree
 
@@ -81,10 +83,10 @@ class Client:
             homework_text += etree.tostring(e).decode('utf8') + '\n'
         return html.unescape(homework_text)
 
-    def homework(self, course_id: int) -> list[str]:
+    def homework(self, course_id: int, config: NavigationConfig = None) -> list[str]:
         assignments: list[str] = []
 
-        assignment_tree = self.lesson_plans(course_id)
+        assignment_tree = self.lesson_plans(course_id, config)
         homework_tree = self.__pick_homework(assignment_tree)
 
         for e in homework_tree[0]:
@@ -97,8 +99,8 @@ class Client:
 
         return assignments
 
-    def homework_raw(self, course_id: int) -> str:
-        assignment_tree = self.lesson_plans(course_id)
+    def homework_raw(self, course_id: int, config: NavigationConfig = None) -> str:
+        assignment_tree = self.lesson_plans(course_id, config)
         homework_tree = self.__pick_homework(assignment_tree)
         return self.__format_homework_tree(homework_tree)
 
