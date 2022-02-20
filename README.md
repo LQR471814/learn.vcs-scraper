@@ -11,23 +11,21 @@ from learnvcs import Client, NavigationConfig, NoEntreeError
 if __name__ == '__main__':
     courses = [433, 1446, 1154, 56, 1468]
 
-    with open('credentials', 'r') as f:
-        username, password, *_ = f.read().split('\n')
-        client = Client.login(username, password)
-        print(client.courses())
+    client = Client.login('Example.Username', 'ExamplePassword46')
+    print(client.courses())
 
-        for c in courses:
-            try:
-                print(client.homework(c))
-            except NoEntreeError as e:
-                print(e)
+    for c in courses:
+        try:
+            print(client.homework(c))
+        except NoEntreeError as e:
+            print(e)
 
-            try:
-                print(client.homework(
-                    c, NavigationConfig(
-                        datetime.now() - timedelta(days=1)
-                    )
-                ))
-            except NoEntreeError as e:
-                print(e)
+        try:
+            print(client.homework(
+                c, NavigationConfig(
+                    datetime.now() - timedelta(days=1)
+                )
+            ))
+        except NoEntreeError as e:
+            print(e)
 ```
