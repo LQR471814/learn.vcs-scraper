@@ -1,15 +1,12 @@
-import html
 import logging
-import unicodedata
 from urllib.parse import parse_qs, urlparse
 
 import requests
 from lxml import etree
 
 from learnvcs.navigators import *
-from learnvcs.utils import htags, prune_tree, root
-
 from learnvcs.navigators import NavigationConfig
+from learnvcs.utils import htag_selector, normalize_text, prune_tree, root
 
 
 class UnexpectedHomeworkFormat(Exception):
@@ -50,7 +47,7 @@ class Client:
         logging.info(f'Session {login_post.cookies.get("MoodleSessionprod")}')
         return cls(session)
 
-    def lesson_plans(self, course_id: int, config: NavigationConfig = None) -> etree._ElementTree:
+    def lesson_plans(self, course_id: int, config: NavigationConfig = None) -> tuple[etree._ElementTree, str]:
         url = f'https://learn.vcs.net/course/view.php?id={course_id}'
         prevtree = None
         for Nav in self.navigation:
@@ -60,41 +57,54 @@ class Client:
 
         r = self.session.get(url)
         assignment_tree = prune_tree(etree.HTML(r.text))
-        return assignment_tree
+        return assignment_tree, url
 
-    def __pick_homework(self, tree: etree.ElementTree) -> list[etree.Element]:
-        collecting = False
-        collection = []
+    def __pick_homework(self, tree: etree.ElementTree) -> etree.Element:
+        root = tree.xpath("//div[@role='main']")[0]
+        anchor = root.xpath(
+            f".//{htag_selector}[contains(text(), 'Homework')]")
 
-        for e in tree.xpath("//div[@class='no-overflow']/*"):
-            if e.tag in htags:
-                collecting = 'homework' in ''.join(
-                    e.xpath('.//text()')).lower()
-                continue
-            if collecting:
-                collection.append(e)
+        if anchor is not None and len(anchor) > 0:
+            return anchor[0].getnext()
+        else:
+            anchor = root.xpath(f".//p[.//*[contains(text(), 'Homework')]]")
+            if anchor is not None and len(anchor) > 0:
+                return anchor[0].getnext()
+            raise UnexpectedHomeworkFormat(
+                self.__format_homework_tree(root)
+            )
 
-        return collection
-
-    def __format_homework_tree(self, tree: list[etree._Element]):
-        homework_text = ""
-        for e in tree:
-            homework_text += etree.tostring(e).decode('utf8') + '\n'
-        return html.unescape(homework_text)
+    def __format_homework_tree(self, element: etree._Element):
+        return normalize_text(
+            etree.tostring(element).decode('utf8')
+        ) + '\n'
 
     def homework(self, course_id: int, config: NavigationConfig = None) -> list[str]:
         assignments: list[str] = []
 
-        assignment_tree = self.lesson_plans(course_id, config)
-        homework_tree = self.__pick_homework(assignment_tree)
+        lesson_plans_tree, url = self.lesson_plans(course_id, config)
+        try:
+            homework_body = self.__pick_homework(lesson_plans_tree)
+        except UnexpectedHomeworkFormat as err:
+            raise UnexpectedHomeworkFormat(
+                f'{err}\nPlease visit {url} for manual review.'
+            )
 
-        for e in homework_tree[0]:
-            if e.tag == 'li' and e.text is not None:
-                assignments.append(unicodedata.normalize(
-                    'NFKD', ''.join(e.itertext())))
-            else:
+        list_nodes = homework_body.xpath('.//li')
+        if len(list_nodes) > 0:
+            for node in list_nodes:
+                text = normalize_text(''.join(node.itertext()))
+                if text == 'None':
+                    continue
+                assignments.append(text)
+        else:
+            homework_text = homework_body.xpath('.//text()')
+            if homework_text is None:
                 raise UnexpectedHomeworkFormat(
-                    self.__format_homework_tree(homework_tree))
+                    self.__format_homework_tree(homework_body)
+                )
+            for text in homework_text:
+                assignments.append(text)
 
         return assignments
 

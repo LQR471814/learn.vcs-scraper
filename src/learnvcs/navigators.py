@@ -1,10 +1,20 @@
+import traceback
 from datetime import datetime
 
 import requests
 from lxml import etree
 
-from learnvcs.utils import normalize_redirect_url, text_without_accessibility
+from learnvcs.utils import (cut, normalize_redirect_url, strip_lists,
+                            text_without_accessibility)
 
+
+class DateFormatError(Exception):
+    def __init__(self, error: Exception, date: datetime, url: str) -> None:
+        super().__init__(
+            f'Invalid date format!\n'
+            f'{error}\n{traceback.format_exc()}'
+            f"{date.month}/{date.day} URL {url}"
+        )
 
 class NoEntreeError(Exception):
     def __init__(self) -> None:
@@ -61,7 +71,7 @@ class QuarterNavigator(Navigator):
             if int(split_name[1]) > number:
                 number = int(split_name[1])
         return self.tree.xpath(
-            f"//a[@class='aalink'][//*[contains(text(), 'Quarter {number}')]]"
+            f"//a[@class='aalink'][.//*[contains(text(), 'Quarter {number}')]]"
         )[0].get('href')
 
 
@@ -71,21 +81,65 @@ class DateNavigator(Navigator):
         7: 'Jul', 8: 'Aug', 9: 'Sep', 10: 'Oct', 11: 'Nov', 12: 'Dec'
     }
 
+    month_map_inverse: dict[str, int] = {
+        'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4, 'May': 5, 'Jun': 6,
+        'Jul': 7, 'Aug': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12
+    }
+
     def evaluate(self) -> str:
         date = self.config.date
         if date is None:
             date = datetime.now()
 
-        day_elements = self.tree.xpath(
-            f"//li/a["
-            f"contains(text(), '{self.month_map[date.month]}') and "
-            f"contains(text(), '{date.day}')]"
+        date_elements = self.tree.xpath(
+            "//div[contains(@class, 'card-body')]"
+            "/h5[contains(text(), 'Table of contents')]"
+            "/following-sibling::div//li"
         )
 
-        if len(day_elements) < 1:
+        link = None
+
+        for date_entry in date_elements:
+            try:
+                date_text = ''.join(date_entry.xpath('.//text()'))
+                date_segments = strip_lists(cut(cut([date_text], '/'), ' '))
+
+                valid_dates: list[datetime] = []
+                last_month = None
+
+                for segment in date_segments:
+                    if segment[:3] in self.month_map.values():
+                        last_month = self.month_map_inverse[segment[:3]]
+                        continue
+                    try:
+                        day = int(segment)
+                        if last_month is not None:
+                            valid_dates.append(datetime(date.year, last_month, day))
+                        else:
+                            raise DateFormatError(
+                                Exception("Last month reported was None!"),
+                                date, self.url
+                            )
+                    except ValueError:
+                        pass
+
+                valid = False
+                for d in valid_dates:
+                    if date.month == d.month and date.day == d.day:
+                        valid = True
+                        break
+
+                if valid:
+                    if date_entry.xpath('.//a') is None:
+                        link = self.url
+                        break
+                    link = date_entry.xpath('./a')[0].get('href')
+                    break
+            except Exception as err:
+                raise DateFormatError(err, date, self.url)
+
+        if link is None:
             raise NoEntreeError()
 
-        if len(day_elements) > 1:
-            raise Exception("More than one element matched for today's date!")
-
-        return normalize_redirect_url(self.url, day_elements[0].get('href'))
+        print(normalize_redirect_url(self.url, link))
+        return normalize_redirect_url(self.url, link)
