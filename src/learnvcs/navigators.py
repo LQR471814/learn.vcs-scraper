@@ -141,5 +141,4 @@ class DateNavigator(Navigator):
         if link is None:
             raise NoEntreeError()
 
-        print(normalize_redirect_url(self.url, link))
         return normalize_redirect_url(self.url, link)
