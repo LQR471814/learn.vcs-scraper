@@ -10,15 +10,15 @@ if __name__ == '__main__':
         print(client.courses())
 
         for c in courses:
-            # try:
-            #     print(client.homework(c))
-            # except NoEntreeError as e:
-            #     print(e)
             try:
-                print(client.homework(
-                    c, NavigationConfig(
-                        datetime(2022, 2, 10)
-                    )
-                ))
+                print(client.homework(c))
             except NoEntreeError as e:
                 print(e)
+            # try:
+            #     print(client.homework(
+            #         c, NavigationConfig(
+            #             datetime(2022, 2, 10)
+            #         )
+            #     ))
+            # except NoEntreeError as e:
+            #     print(e)

@@ -19,13 +19,4 @@ if __name__ == '__main__':
             print(client.homework(c))
         except NoEntreeError as e:
             print(e)
-
-        try:
-            print(client.homework(
-                c, NavigationConfig(
-                    datetime.now() - timedelta(days=1)
-                )
-            ))
-        except NoEntreeError as e:
-            print(e)
 ```
