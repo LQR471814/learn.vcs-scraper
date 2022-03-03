@@ -67,31 +67,37 @@ def normalize_redirect_url(request_url: str, fragment: str) -> str:
     )
 
 
-def prune_tree(element: etree._Element) -> etree._Element | None:
-    if len(list(element)) == 0:
-        if element.tail is not None and len(element.tail.strip()) > 0:
-            return element.tail
-        if element.text is None:
-            return None
-        elif len(element.text.strip()) == 0:
-            return None
-    for child in element:
-        match child:
+# ? Pruning Algorithm:
+# ?   element mutations
+# ?    - Will remove child if prune child returns None
+# ?    - Will remove child and append text to 'text' attribute if prune child returns str
+# ?    - Will replace child with another child if prune child returns _Element
+# ?   prune returns
+# ?    - Will return None if element has no text or children
+# ?    - Will return str if element has tail text and no children
+# ?    - Will return _Element if none of the above are fulfilled
+def prune_tree(element: etree._Element) -> etree._Element | str | None:
+    child_nodes = element.xpath('./*')
+    for child in [] if child_nodes is None else child_nodes:
+        replaced = prune_tree(child)
+        match replaced:
             case etree._Element():
-                replaced = prune_tree(child)
-                match replaced:
-                    case etree._Element():
-                        element.replace(child, replaced)
-                    case str():
-                        if element.text is None:
-                            element.text = ''
-                        element.text += replaced
-                        element.remove(child)
-                    case None:
-                        element.remove(child)
+                element.replace(child, replaced)
             case str():
-                if len(child.strip()) == 0:
-                    element.remove(child)
+                if element.text is None:
+                    element.text = ''
+                element.text += replaced
+                element.remove(child)
+            case None:
+                element.remove(child)
+
+    text = '' if element.text is None else element.text
+    if len(text.strip()) == 0 and len(element) == 0:
+        tail = '' if element.tail is None else element.tail
+        if len(tail.strip()) > 0:
+            return tail
+        return None
+
     return element
 
 

@@ -10,7 +10,7 @@ class Vector:
 class VectorFailure(Exception):
     def __init__(self, test: Vector, got) -> None:
         super().__init__(
-            f'TEST {test.test} '
-            f'EXPECT {test.expect} '
+            f'TEST {test.test} \n'
+            f'EXPECT {test.expect} \n'
             f'GOT {got}'
         )

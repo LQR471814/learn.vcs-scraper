@@ -56,13 +56,14 @@ class Client:
             prevtree = navigator.tree
 
         r = self.session.get(url)
-        assignment_tree = prune_tree(etree.HTML(r.text))
-        return assignment_tree, url
+        return etree.HTML(r.text), url
 
     def __pick_homework(self, tree: etree.ElementTree) -> etree.Element:
         root = tree.xpath("//div[@role='main']")[0]
-        anchor = root.xpath(
-            f".//{htag_selector}[contains(text(), 'Homework')]")
+        clean_root = prune_tree(root)
+        anchor = clean_root.xpath(
+            f".//{htag_selector}[contains(text(), 'Homework')]"
+        )
 
         if anchor is not None and len(anchor) > 0:
             return anchor[0].getnext()
@@ -93,7 +94,10 @@ class Client:
         list_nodes = homework_body.xpath('.//li')
         if len(list_nodes) > 0:
             for node in list_nodes:
-                text = normalize_text(''.join(node.itertext()))
+                homework_text = node.xpath('.//text()')
+                if homework_text is None:
+                    continue
+                text = normalize_text(''.join(homework_text))
                 if text == 'None':
                     continue
                 assignments.append(text)

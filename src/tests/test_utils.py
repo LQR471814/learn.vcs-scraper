@@ -21,16 +21,22 @@ def serialize(element: _Element | None) -> str:
 def test_pruning():
     test_map = {
         E('div'): None,
-        E('div', E('a')): E('div'),
+        E('div', E('p', E('br'))): None,
         E('div', 'TEXT', E('b')): E('div', 'TEXT'),
         E('div', E('b'), 'TEXT'): E('div', 'TEXT'),
+        E('span', 'FRONT ', E('span', 'MID'), ' END'):
+            E('span', 'FRONT ', E('span', 'MID'), ' END'),
+        E('div', E('span', 'whee')): E('div', E('span', 'whee'))
     }
 
     for test in test_map:
         expect = serialize(test_map[test])
         result = serialize(prune_tree(deepcopy(test)))
         if result != expect:
-            raise VectorFailure(Vector(test, expect), result)
+            raise VectorFailure(
+                Vector(tostring(test).decode('utf8'), expect),
+                result
+            )
         else:
             print(f'PASS {serialize(test)}')
 
