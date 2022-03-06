@@ -11,7 +11,7 @@ if __name__ == '__main__':
 
         for c in courses:
             try:
-                print(client.homework(c))
+                print(client.homework(c, NavigationConfig(datetime(2022, 3, 4))))
             except NoEntreeError as e:
                 print(e)
             # try:

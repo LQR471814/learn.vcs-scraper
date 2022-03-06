@@ -4,6 +4,7 @@ import logging
 import re
 import unicodedata
 from urllib.parse import urlparse, urlunparse
+from xml.etree.ElementTree import tostring
 
 from lxml import etree
 
@@ -66,6 +67,17 @@ def normalize_redirect_url(request_url: str, fragment: str) -> str:
         )
     )
 
+
+# ? Will go up ancestry of element until finding a valid next sibling
+def get_next(element: etree._Element) -> etree._Element | None:
+    sibling = element.getnext()
+    while sibling is None:
+        element = element.xpath('./..')
+        if element is None or len(element) == 0:
+            return None
+        element = element[0]
+        sibling = element.getnext()
+    return sibling
 
 # ? Pruning Algorithm:
 # ?   element mutations

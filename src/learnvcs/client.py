@@ -6,13 +6,18 @@ from lxml import etree
 
 from learnvcs.navigators import *
 from learnvcs.navigators import NavigationConfig
-from learnvcs.utils import htag_selector, normalize_text, prune_tree, root
+from learnvcs.utils import get_next, htag_selector, normalize_text, prune_tree, root
 
 
-class UnexpectedHomeworkFormat(Exception):
+class DebugHomeworkStructure(Exception):
     def __init__(self, dump: str) -> None:
         super().__init__(
             f"Got an unexpected element whilst structuring homework\nDUMP:\n{dump}")
+
+class UnexpectedHomeworkFormat(Exception):
+    def __init__(self, url: str, message: str = 'Unexpected homework format!') -> None:
+        self.url = url
+        super().__init__(f"{message}\nGo to {url} for manual review")
 
 
 class Client:
@@ -66,12 +71,12 @@ class Client:
         )
 
         if anchor is not None and len(anchor) > 0:
-            return anchor[0].getnext()
+            return get_next(anchor[0])
         else:
             anchor = root.xpath(f".//p[.//*[contains(text(), 'Homework')]]")
             if anchor is not None and len(anchor) > 0:
-                return anchor[0].getnext()
-            raise UnexpectedHomeworkFormat(
+                return get_next(anchor[0])
+            raise DebugHomeworkStructure(
                 self.__format_homework_tree(root)
             )
 
@@ -86,9 +91,14 @@ class Client:
         lesson_plans_tree, url = self.lesson_plans(course_id, config)
         try:
             homework_body = self.__pick_homework(lesson_plans_tree)
-        except UnexpectedHomeworkFormat as err:
+        except DebugHomeworkStructure as err:
             raise UnexpectedHomeworkFormat(
-                f'{err}\nPlease visit {url} for manual review.'
+                message=err, url=url,
+            )
+
+        if homework_body is None:
+            raise UnexpectedHomeworkFormat(
+                message='Could not get homework body!', url=url,
             )
 
         list_nodes = homework_body.xpath('.//li')
@@ -104,7 +114,7 @@ class Client:
         else:
             homework_text = homework_body.xpath('.//text()')
             if homework_text is None:
-                raise UnexpectedHomeworkFormat(
+                raise DebugHomeworkStructure(
                     self.__format_homework_tree(homework_body)
                 )
             for text in homework_text:
