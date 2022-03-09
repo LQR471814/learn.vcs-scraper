@@ -134,7 +134,7 @@ class Client:
         tree = etree.HTML(r.text)
 
         for course in tree.xpath(f"//div/ul[@class='unlist']/li//a"):
-            courses[course.xpath('.//text()')[0]] = int(
+            courses[str(course.xpath('.//text()')[0])] = int(
                 parse_qs(urlparse(course.get('href')).query)['id'][0]
             )
 
