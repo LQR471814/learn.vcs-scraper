@@ -4,13 +4,18 @@ import logging
 import re
 import unicodedata
 from urllib.parse import urlparse, urlunparse
-from xml.etree.ElementTree import tostring
 
 from lxml import etree
 
 root = 'https://learn.vcs.net'
 text_without_accessibility = "//text()[not(ancestor::span[contains(@class, 'accesshide')])]"
 htag_selector = '*[self::h1 or self::h2 or self::h3 or self::h4 or self::h5 or self::h6]'
+lowered_text = "translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')"
+#? Will select (case-insensitive if specified) current text and any children nodes that contain given keyword
+deep_text_search = lambda s, t = '*', lowered = False: (
+    f"[contains({lowered_text if lowered else 'text()'}, '{s}') or "
+    f".//{t}[contains({lowered_text if lowered else 'text()'}, '{s}')]]"
+)
 inner_whitespace = re.compile(r'\s\s+')
 
 
@@ -88,6 +93,8 @@ def get_next(element: etree._Element) -> etree._Element | None:
 # ?    - Will return None if element has no text or children
 # ?    - Will return str if element has tail text and no children
 # ?    - Will return _Element if none of the above are fulfilled
+
+
 def prune_tree(element: etree._Element) -> etree._Element | str | None:
     child_nodes = element.xpath('./*')
     for child in [] if child_nodes is None else child_nodes:

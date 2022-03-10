@@ -6,13 +6,14 @@ from lxml import etree
 
 from learnvcs.navigators import *
 from learnvcs.navigators import NavigationConfig
-from learnvcs.utils import get_next, htag_selector, normalize_text, prune_tree, root
+from learnvcs.utils import get_next, htag_selector, normalize_text, prune_tree, root, deep_text_search
 
 
 class DebugHomeworkStructure(Exception):
     def __init__(self, dump: str) -> None:
         super().__init__(
             f"Got an unexpected element whilst structuring homework\nDUMP:\n{dump}")
+
 
 class UnexpectedHomeworkFormat(Exception):
     def __init__(self, url: str, message: str = 'Unexpected homework format!') -> None:
@@ -66,19 +67,39 @@ class Client:
     def __pick_homework(self, tree: etree.ElementTree) -> etree.Element:
         root = tree.xpath("//div[@role='main']")[0]
         clean_root = prune_tree(root)
-        anchor = clean_root.xpath(
-            f".//{htag_selector}[contains(text(), 'Homework')]"
-        )
 
-        if anchor is not None and len(anchor) > 0:
-            return get_next(anchor[0])
-        else:
-            anchor = root.xpath(f".//p[.//*[contains(text(), 'Homework')]]")
-            if anchor is not None and len(anchor) > 0:
-                return get_next(anchor[0])
+        homework_text = 'homework'
+        lowered_homework_selector = deep_text_search(homework_text, '*', True)
+
+        anchor_candidates: list[tuple[float, etree._Element]] = []
+
+        def score_path(xpath: str):
+            results = clean_root.xpath(xpath)
+            if results is None:
+                return
+            for element in results:
+                text = element.xpath('.//text()')
+                if text is None or len(text) == 0:
+                    continue
+                score = len(homework_text) / len(''.join(text))
+                anchor_candidates.append((score, element))
+
+        score_path(f".//{htag_selector}{lowered_homework_selector}")
+        score_path(f".//p{lowered_homework_selector}")
+
+        anchor: etree._Element | None = None
+        anchor_score = 0
+        for score, candidate in anchor_candidates:
+            if score > anchor_score:
+                anchor_score = score
+                anchor = candidate
+
+        if anchor is None:
             raise DebugHomeworkStructure(
-                self.__format_homework_tree(root)
+                self.__format_homework_tree(clean_root)
             )
+
+        return get_next(anchor)
 
     def __format_homework_tree(self, element: etree._Element):
         return normalize_text(
@@ -118,6 +139,9 @@ class Client:
                     self.__format_homework_tree(homework_body)
                 )
             for text in homework_text:
+                text = normalize_text(text)
+                if text == 'None':
+                    continue
                 assignments.append(text)
 
         return assignments
